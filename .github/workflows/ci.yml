@@ -4,6 +4,9 @@ on:
     branches: [master]
   pull_request:
 
+env:
+  BINARY_NAME: sqs-pull
+
 jobs:
   test:
     strategy:

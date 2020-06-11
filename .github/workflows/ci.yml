@@ -4,9 +4,6 @@ on:
     branches: [master]
   pull_request:
 
-env:
-  BINARY_NAME: sqs-pull
-
 jobs:
   test:
     strategy:
@@ -32,71 +29,3 @@ jobs:
 
       - name: Verify command runs
         run: cargo run -- --help
-
-  linux-x86_64:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v1
-
-      - uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: stable
-          default: true
-
-      - name: Build binary
-        uses: actions-rs/cargo@v1
-        with:
-          command: build
-          args: --release --target x86_64-unknown-linux-musl
-          use-cross: true
-
-      - name: Optimize and package binary
-        run: |
-          cd target/x86_64-unknown-linux-musl/release
-          strip $BINARY_NAME
-          chmod +x $BINARY_NAME
-          tar -c $BINARY_NAME | gzip > $BINARY_NAME.tar.gz
-
-  macos-x86_64:
-    runs-on: macos-latest
-    steps:
-      - uses: actions/checkout@v1
-
-      - uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: stable
-          default: true
-
-      - name: Build binary
-        uses: actions-rs/cargo@v1
-        with:
-          command: build
-          args: --release
-
-      - name: Optimize and package binary
-        run: |
-          cd target/release
-          strip $BINARY_NAME
-          chmod +x $BINARY_NAME
-          mkdir dmg
-          mv $BINARY_NAME dmg/
-          hdiutil create -fs HFS+ -srcfolder dmg -volname $BINARY_NAME $BINARY_NAME.dmg
-
-  windows-x86_64:
-    runs-on: windows-latest
-    steps:
-      - uses: actions/checkout@v1
-
-      - uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: stable
-          default: true
-
-      - name: Build binary
-        uses: actions-rs/cargo@v1
-        with:
-          command: build
-          args: --release

@@ -58,7 +58,6 @@ jobs:
         with:
           command: build
           args: --release
-          use-cross: true
 
       - name: Optimize and package binary
         run: |
@@ -95,7 +94,6 @@ jobs:
         with:
           command: build
           args: --release
-          use-cross: true
 
       - name: Upload binary
         uses: actions/upload-release-asset@v1

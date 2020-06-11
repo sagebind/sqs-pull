@@ -22,32 +22,33 @@ use tokio::{sync::Mutex, task};
 
 #[derive(Clone, Debug, StructOpt)]
 struct Options {
-    /// The AWS region to use.
-    #[structopt(short, long)]
-    region: Option<Region>,
-
     /// Name of the SQS queue to move messages from.
-    #[structopt(short, long)]
     source: String,
 
     /// Name of the destination SQS queue to move messages to.
-    #[structopt(short, long)]
     destination: String,
+
+    /// The AWS region to use.
+    #[structopt(short, long)]
+    region: Option<Region>,
 
     /// Only move messages whose body matches the given regular expression.
     #[structopt(long)]
     body_matching: Option<Regex>,
 
-    /// Only move messages whose body does _not_ match the given regular expression.
+    /// Exclude messages whose body matches the given regular expression.
     #[structopt(long)]
     body_not_matching: Option<Regex>,
 
+    /// Number of messages to move in a single operation
     #[structopt(long, default_value = "10")]
     batch_size: u32,
 
     /// Number of workers to spawn to perform moving.
-    #[structopt(long, default_value = "16")]
-    worker_count: u32,
+    ///
+    /// Defaults to 4 per CPU core.
+    #[structopt(short = "j", long)]
+    worker_count: Option<usize>,
 
     /// Silence all command output.
     #[structopt(short, long)]
@@ -68,6 +69,9 @@ async fn main() -> Result<(), Box<dyn Error>> {
         .init()
         .unwrap();
 
+    let task_count = options.worker_count
+        .unwrap_or_else(|| num_cpus::get() * 4);
+
     let region = options.region.clone().unwrap_or_default();
     let sqs = SqsClient::new(region);
 
@@ -83,6 +87,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     println!("Source URL: {}", source_url);
     println!("Destination URL: {}", destination_url);
+    println!("Using {} workers", task_count);
 
     // Try to guess how many messages we will be moving in order to show a progress bar.
     let source_attributes = sqs.get_queue_attributes(GetQueueAttributesRequest {
@@ -105,7 +110,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     let mut worker_handles = Vec::new();
 
-    for _ in 0..options.worker_count {
+    for _ in 0..task_count {
         let task = move_messages(
             sqs.clone(),
             options.clone(),
